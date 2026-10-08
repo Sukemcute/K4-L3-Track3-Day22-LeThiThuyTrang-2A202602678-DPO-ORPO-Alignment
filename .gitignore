@@ -49,3 +49,4 @@ hf_cache/
 .idea/
 .vscode/
 *.swp
+.agent/

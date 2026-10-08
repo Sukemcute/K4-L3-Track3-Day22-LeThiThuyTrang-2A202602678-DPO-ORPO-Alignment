@@ -306,8 +306,14 @@ def make_rm_scorer(name: str | Path, max_length: int = 4096) -> Scorer:
 
 # --- Optional API judge ------------------------------------------------------
 
-API_KEYS = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY"}
+API_KEYS = {
+    "openai": "OPENAI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+}
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 def has_judge_key(provider: str) -> bool:
@@ -354,6 +360,25 @@ def make_caller(provider: str, model: str, max_tokens: int = 200) -> Caller:
             return resp.choices[0].message.content or ""
 
         return call
+    if provider == "openrouter":
+        # OpenRouter endpoint supporting Gemini models (e.g. google/gemini-2.5-flash)
+        if not os.environ.get("OPENROUTER_API_KEY"):
+            raise RuntimeError("OPENROUTER_API_KEY is not set")
+        from openai import OpenAI
+
+        base_url = os.environ.get("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL)
+        client = OpenAI(api_key=os.environ["OPENROUTER_API_KEY"], base_url=base_url)
+
+        def call(system: str, user: str) -> str:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+                response_format={"type": "json_object"},
+                max_tokens=max(max_tokens, 1024),
+            )
+            return resp.choices[0].message.content or ""
+
+        return call
     if provider == "anthropic":
         if not os.environ.get("ANTHROPIC_API_KEY"):
             raise RuntimeError("ANTHROPIC_API_KEY is not set")
@@ -371,4 +396,4 @@ def make_caller(provider: str, model: str, max_tokens: int = 200) -> Caller:
             return "".join(getattr(block, "text", "") for block in resp.content)
 
         return call
-    raise RuntimeError(f"JUDGE_PROVIDER must be 'rm', 'openai', 'anthropic' or 'gemini', got {provider!r}")
+    raise RuntimeError(f"JUDGE_PROVIDER must be 'rm', 'openai', 'anthropic', 'gemini' or 'openrouter', got {provider!r}")

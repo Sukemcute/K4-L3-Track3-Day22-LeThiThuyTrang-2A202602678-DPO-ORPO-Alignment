@@ -207,6 +207,9 @@ def test_make_caller_requires_model_id(monkeypatch):
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
         J.make_caller("gemini", "some-model")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        J.make_caller("openrouter", "google/gemini-2.5-flash")
     with pytest.raises(RuntimeError, match="JUDGE_PROVIDER"):
         J.make_caller("other", "m")
 
