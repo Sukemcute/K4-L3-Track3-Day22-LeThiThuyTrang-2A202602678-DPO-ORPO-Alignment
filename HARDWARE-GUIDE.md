@@ -27,7 +27,7 @@ Hai thời điểm bộ nhớ tăng vọt cần lưu ý:
 | Tài nguyên bạn có | Tier | Cách chạy |
 |---|---|---|
 | Colab T4 miễn phí | **T4** | `colab/Lab22_DPO_T4.ipynb` |
-| Kaggle T4×2 | T4 (dùng một GPU) | `colab/Lab22_DPO_T4.ipynb` |
+| Kaggle T4×2 | T4 (dùng một GPU) | `kaggle/Lab22_DPO_T4_Kaggle.ipynb` (Run All: NB0–NB4) |
 | Colab Pro L4 / A100 | **BigGPU** | `colab/Lab22_DPO_BigGPU.ipynb` |
 | GPU laptop 12–23 GB | T4 | `setup-laptop.sh` + `make pipeline` |
 | GPU ≥ 24 GB | BigGPU | `COMPUTE_TIER=BIGGPU make pipeline` |

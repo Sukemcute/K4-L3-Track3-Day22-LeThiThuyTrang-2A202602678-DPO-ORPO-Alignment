@@ -48,3 +48,44 @@ def test_colab_bundles_are_valid_and_current():
     for tier, path in (("T4", "Lab22_DPO_T4.ipynb"), ("BIGGPU", "Lab22_DPO_BigGPU.ipynb")):
         on_disk = json.loads((REPO / "colab" / path).read_text(encoding="utf-8"))
         assert on_disk == render(tier), f"colab/{path} is stale: run `make colab`"
+
+
+def test_kaggle_bundle_is_current_and_has_only_core_stages():
+    from build_kaggle import TARGET, render
+
+    notebook = json.loads(TARGET.read_text(encoding="utf-8"))
+    assert notebook == render(), "Kaggle bundle is stale: run python scripts/build_kaggle.py"
+    stages = [
+        "".join(cell["source"]).split("`", 2)[1]
+        for cell in notebook["cells"]
+        if cell["cell_type"] == "markdown" and "".join(cell["source"]).startswith("---\n# ⏵")
+    ]
+    assert stages == [f"notebooks/{stem}.py" for stem in NOTEBOOKS[:4] + ["04_compare_and_eval"]]
+
+
+def test_kaggle_bundle_uses_kaggle_paths_and_valid_python():
+    from build_kaggle import WORKDIR, render
+
+    notebook = render()
+    all_source = "\n".join("".join(cell["source"]) for cell in notebook["cells"])
+    assert "/content/" not in all_source and "google.colab" not in all_source
+    assert "colab" not in notebook["metadata"]
+    code_cells = [cell for cell in notebook["cells"] if cell["cell_type"] == "code"]
+    first = "".join(code_cells[0]["source"])
+    assert 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"' in first
+    assert 'os.environ["COMPUTE_TIER"] = "T4"' in first
+    assert "import torch" not in first
+    assert "kaggle_secrets" in first
+    installer = "".join(code_cells[1]["source"])
+    assert "llama-cpp-python" not in installer and "lm-eval" not in installer
+    written = set()
+    for cell in code_cells:
+        source = "".join(cell["source"])
+        if source.startswith("%%writefile "):
+            header, source = source.split("\n", 1)
+            path = header.removeprefix("%%writefile ")
+            assert path.startswith(f"{WORKDIR}/lab22/")
+            written.add(Path(path).name)
+        ast.parse(source)
+    assert written == {p.name for p in (REPO / "lab22").glob("*.py")}
+    assert "lab22-evidence.zip" in "".join(code_cells[-1]["source"])

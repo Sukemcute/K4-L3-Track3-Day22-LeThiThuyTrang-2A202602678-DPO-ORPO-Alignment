@@ -58,6 +58,21 @@ Việt để huấn luyện và 100 cặp để kiểm tra.
 
 Muốn chạy trên laptop/máy chủ có GPU ≥ 12 GB, hoặc dùng A100/L4: xem [`docs/reference.md`](docs/reference.md).
 
+### Chạy trên Kaggle
+
+Import [`kaggle/Lab22_DPO_T4_Kaggle.ipynb`](kaggle/Lab22_DPO_T4_Kaggle.ipynb) vào Kaggle,
+chọn **GPU T4 ×2**, bật **Internet**, rồi **Run All** trong một phiên mới.
+Bản này dùng một GPU, tier T4, chạy phần bắt buộc NB0 → NB4 và bỏ các phần bonus.
+Đường dẫn và các cell `%%writefile` đã dùng `/kaggle/working/lab22`; không cần tự sửa.
+Giám khảo mặc định chạy local, không cần API key. Nếu dùng API, cấu hình bằng Kaggle Secrets
+theo hướng dẫn trong cell đầu tiên.
+
+Cuối notebook tạo `/kaggle/working/lab22-evidence.zip` chứa ảnh, dữ liệu và JSON kết quả.
+Tải ZIP cùng notebook có output về máy để hoàn thiện `submission/REFLECTION.md` và nộp bài.
+ZIP không chứa trọng số; muốn tiếp tục training ở phiên khác cần sao lưu riêng model/adapter.
+Sinh lại notebook sau khi sửa mã nguồn: `python scripts/build_kaggle.py`;
+kiểm tra đồng bộ: `python scripts/build_kaggle.py --check`.
+
 ---
 
 ## 2. Từng bước một
