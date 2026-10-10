@@ -28,6 +28,10 @@ ANSWER_PLACEHOLDER = "_Trả lời ở đây._"
 CORE_SECTIONS = ("1", "2", "3", "4", "6")  # §5, §7–§9 belong to bonus work
 MIN_HELDOUT_JUDGED = 50
 MIN_SANITY = 0.8  # reward-model judge on the Vietnamese sanity pairs
+EXPORTED_SFT_REFERENCES = {
+    "/kaggle/working/lab22/models/sft-merged",
+    "/content/lab22/models/sft-merged",
+}
 
 
 def rel(path: Path) -> str:
@@ -52,17 +56,52 @@ def read_json(path: Path, problems: list[str]) -> dict | list | None:
         return None
 
 
+def reference_location(base: str) -> str | None:
+    """Recognize this repo's reference or an exact path used by its cloud bundles.
+
+    Do not accept an arbitrary path just because it ends in models/sft-merged.
+    Relative paths are anchored to REPO, not the verifier's current directory.
+    Exported paths need corroborating metadata in check_dpo; they are not proof
+    that model weights were restored locally.
+    """
+    if not base:
+        return None
+    if base.rstrip("/") in EXPORTED_SFT_REFERENCES:
+        return "exported"
+    path = Path(base)
+    try:
+        resolved = (path if path.is_absolute() else REPO / path).resolve()
+        if resolved == (REPO / "models" / "sft-merged").resolve():
+            return "local"
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def check_dpo(problems: list[str], warnings: list[str]) -> None:
     adapter = REPO / "adapters" / "dpo"
     if not need(adapter / "adapter_config.json", "DPO adapter (NB3)", problems):
         return
     base = str((read_json(adapter / "adapter_config.json", problems) or {}).get("base_model_name_or_path", ""))
     expected = (REPO / "models" / "sft-merged").resolve()
-    if not base or Path(base).resolve() != expected:
+    path = adapter / "dpo_metrics.json"
+    metrics = {}
+    if need(path, "DPO metrics (NB3)", problems):
+        metrics = read_json(path, problems) or {}
+    location = reference_location(base)
+    if location is None:
         problems.append(
             f"WRONG REF  adapters/dpo was trained on {base!r}, not {rel(expected)}: the DPO reference "
-            "must be this repo's SFT model (if the repo moved, rerun NB3 here)."
+            "must be this repo's SFT model or an exact reference path from its Kaggle/Colab bundle."
         )
+    elif location == "exported":
+        if metrics.get("reference") != "models/sft-merged (precomputed)" or not (expected / "config.json").is_file():
+            problems.append("UNCONFIRMED REF  cloud export needs merged SFT config.json and matching NB3 reference metadata")
+        else:
+            warnings.append(
+                f"Cloud reference {base!r} recognized; original config kept unchanged. "
+                "Evidence checks do not verify or restore model weights."
+            )
     sys.path.insert(0, str(REPO))
     from lab22.data import split_mismatch
 
@@ -70,10 +109,6 @@ def check_dpo(problems: list[str], warnings: list[str]) -> None:
         mismatch = split_mismatch(REPO / "data" / "pref", adapter)
         if mismatch:
             problems.append(f"SPLIT    {mismatch}")
-    path = adapter / "dpo_metrics.json"
-    if not need(path, "DPO metrics (NB3)", problems):
-        return
-    metrics = read_json(path, problems) or {}
     for key in ("end_reward_gap", "eval_reward_accuracy", "diagnosis"):
         if metrics.get(key) is None:
             warnings.append(f"dpo_metrics.json has no {key}")

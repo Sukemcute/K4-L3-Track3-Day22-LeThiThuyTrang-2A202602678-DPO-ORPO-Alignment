@@ -11,12 +11,14 @@
 # > - 8 câu hỏi cố định (4 hữu ích, 4 an toàn) để đọc bằng mắt;
 # > - `JUDGE_PROMPTS` câu hỏi (≥ 50) lấy từ tập eval held-out của NB2.
 # >
-# > **Giám khảo (tự động, không cần API key):** mặc định là hội đồng mô hình reward chạy local, khác họ
-# > nhau (`JUDGE_RM_MODELS`). RM chấm điểm từng câu trả lời riêng, nên không có thiên vị vị trí A/B.
+# > **Giám khảo:** chọn qua `JUDGE_PROVIDER`. Repo mặc định dùng hội đồng reward model local,
+# > bản Kaggle dùng OpenRouter. RM (`JUDGE_RM_MODELS`) không cần API key và chấm từng câu
+# > trả lời riêng, nên không có thiên vị vị trí A/B.
 # > Mỗi RM phải qua bộ kiểm tra 12 cặp tiếng Việt hiển nhiên (≥ 80% đúng); DPO chỉ thắng một cặp
 # > khi mọi RM đồng ý.
-# > Tuỳ chọn: giám khảo qua API (`JUDGE_PROVIDER=gemini|openai|anthropic` + `JUDGE_MODEL`) chấm mỗi cặp
+# > Giám khảo qua API (`JUDGE_PROVIDER=openrouter|gemini|openai|anthropic` + `JUDGE_MODEL`) chấm mỗi cặp
 # > **hai lần** đổi chỗ A/B; lệch nhau tính hoà.
+# > Bản Kaggle cấu hình OpenRouter qua Kaggle Secrets. Khi đã chọn API, thiếu key sẽ dừng để cấu hình.
 # > Cả hai đều báo khoảng tin cậy 95% (bootstrap), tỉ lệ "câu dài hơn thắng" và tỉ lệ thắng trên
 # > các cặp dài gần bằng nhau, để phát hiện thiên vị độ dài.
 
@@ -152,16 +154,20 @@ plt.show()
 #
 # RM nào trượt bộ kiểm tra nhanh tiếng Việt (< 80%) bị loại khỏi hội đồng, trừ khi tất cả đều trượt.
 #
-# **Giám khảo qua API (tuỳ chọn).** Đặt `JUDGE_PROVIDER` + `JUDGE_MODEL` + key. Thiếu key thì notebook
-# quay về hội đồng RM, không dừng. Chạy lần lượt cả hai: kết quả lưu riêng (`judge_results_rm.json`,
+# **Giám khảo qua API.** Đặt `JUDGE_PROVIDER` + `JUDGE_MODEL` + key. Thiếu key thì notebook
+# dừng, không tự đổi sang giám khảo khác. Chạy lần lượt cả hai: kết quả lưu riêng (`judge_results_rm.json`,
 # `judge_results_api.json`) và §4 báo tỉ lệ đồng ý (`cross_judge`) nếu cả hai chấm cùng một
 # `side_by_side.jsonl` (sinh greedy nên thường trùng giữa các lần chạy).
 
 # %%
 provider = C.JUDGE_PROVIDER
 if provider != "rm" and not J.has_judge_key(provider):
-    print(f"JUDGE_PROVIDER={provider} but its API key is missing → local reward-model panel.")
-    provider = "rm"
+    raise RuntimeError(
+        f"JUDGE_PROVIDER={provider}: missing API key. Configure the selected provider's key; "
+        "the notebook will not switch to a local reward model."
+    )
+if provider != "rm" and not C.JUDGE_MODEL:
+    raise RuntimeError("Set JUDGE_MODEL for the selected API judge before running NB4.")
 
 sanity, per_judge = {}, {}
 if provider == "rm":

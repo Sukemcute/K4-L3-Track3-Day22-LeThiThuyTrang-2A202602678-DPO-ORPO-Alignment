@@ -64,14 +64,34 @@ Import [`kaggle/Lab22_DPO_T4_Kaggle.ipynb`](kaggle/Lab22_DPO_T4_Kaggle.ipynb) v�
 chọn **GPU T4 ×2**, bật **Internet**, rồi **Run All** trong một phiên mới.
 Bản này dùng một GPU, tier T4, chạy phần bắt buộc NB0 → NB4 và bỏ các phần bonus.
 Đường dẫn và các cell `%%writefile` đã dùng `/kaggle/working/lab22`; không cần tự sửa.
-Giám khảo mặc định chạy local, không cần API key. Nếu dùng API, cấu hình bằng Kaggle Secrets
-theo hướng dẫn trong cell đầu tiên.
+Cache tải model/dataset dùng `/tmp/lab22-hf-cache` để dành ổ working cho artifact;
+cache trong `/tmp` không được giữ lại như output của notebook.
+NB4 trong bản Kaggle dùng **OpenRouter / google/gemini-2.5-flash**. Thêm secret
+`OPENROUTER_API_KEY` trong Kaggle Secrets và bật quyền dùng cho notebook trước khi Run All.
+Thiếu key thì notebook dừng để cấu hình, không tự chuyển sang reward model local.
+Mỗi cặp được chấm hai lần đảo A/B; kết quả báo `position_consistency` và CI 95%.
+
+Nếu đã train và sinh câu trả lời xong, dùng
+[`kaggle/Lab22_OpenRouter_Rejudge.ipynb`](kaggle/Lab22_OpenRouter_Rejudge.ipynb) để chấm lại.
+Chép các cell vào cuối notebook đang chạy, hoặc ở phiên mới giải nén ZIP bằng chứng vào
+`/kaggle/working/lab22` rồi chạy notebook chấm lại. Chỉ cần `data/eval/side_by_side.jsonl`,
+không cần model weights hoặc GPU. Kết quả RM cũ được giữ để đối chiếu `cross_judge` nếu có.
 
 Cuối notebook tạo `/kaggle/working/lab22-evidence.zip` chứa ảnh, dữ liệu và JSON kết quả.
 Tải ZIP cùng notebook có output về máy để hoàn thiện `submission/REFLECTION.md` và nộp bài.
 ZIP không chứa trọng số; muốn tiếp tục training ở phiên khác cần sao lưu riêng model/adapter.
+Kết quả thực nghiệm đã nhập và cách kiểm tra trên Windows được ghi tại
+[`submission/EVIDENCE.md`](submission/EVIDENCE.md); phản tư ở
+[`submission/REFLECTION.md`](submission/REFLECTION.md).
 Sinh lại notebook sau khi sửa mã nguồn: `python scripts/build_kaggle.py`;
 kiểm tra đồng bộ: `python scripts/build_kaggle.py --check`.
+Nếu bản notebook cũ bị hết ổ working khi tải giám khảo ở NB4, xem
+[`docs/KAGGLE-RECOVERY.md`](docs/KAGGLE-RECOVERY.md) để chạy tiếp trong phiên hiện tại.
+
+Bonus trong phiên còn trọng số: copy các cell từ
+[`kaggle/Lab22_Bonus_T4_Kaggle.ipynb`](kaggle/Lab22_Bonus_T4_Kaggle.ipynb) vào cuối notebook cũ,
+chạy NB3b và β-sweep; không restart hoặc chạy lại core. NB6 tắt mặc định.
+Xem cách chạy, lưu từng run và tải kết quả ở [`docs/KAGGLE-BONUS.md`](docs/KAGGLE-BONUS.md).
 
 ---
 

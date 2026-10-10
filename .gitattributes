@@ -1,0 +1,6 @@
+# Judge provenance hashes the raw output bytes. Never convert these line endings.
+data/eval/*.jsonl -text
+
+# Evidence binaries must remain byte-identical across platforms.
+data/pref/*.parquet binary
+submission/screenshots/*.png binary

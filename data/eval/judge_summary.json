@@ -1,0 +1,83 @@
+{
+  "judge": "openrouter:google/gemini-2.5-flash",
+  "outputs_sha256": "37ffa9dca872fe26617826d8d88eb1a4e736178af7f288beaced3380e3e4bfe0",
+  "sanity_accuracy": null,
+  "sanity": null,
+  "overall": {
+    "n": 58,
+    "n_failed": 0,
+    "dpo_wins": 2,
+    "sft_wins": 1,
+    "ties": 55,
+    "dpo_win_rate": 0.5086206896551724,
+    "win_rate_ci95": [
+      0.4827586206896552,
+      0.5431034482758621
+    ],
+    "position_consistency": 0.8103448275862069,
+    "longer_answer_won_frac": 0.6666666666666666,
+    "length_matched_n": 51,
+    "length_matched_win_rate": 0.5098039215686274,
+    "mean_chars_sft": 560.3965517241379,
+    "mean_chars_dpo": 582.0344827586207
+  },
+  "heldout": {
+    "n": 50,
+    "n_failed": 0,
+    "dpo_wins": 2,
+    "sft_wins": 1,
+    "ties": 47,
+    "dpo_win_rate": 0.51,
+    "win_rate_ci95": [
+      0.48,
+      0.54
+    ],
+    "position_consistency": 0.82,
+    "longer_answer_won_frac": 0.6666666666666666,
+    "length_matched_n": 43,
+    "length_matched_win_rate": 0.5116279069767442,
+    "mean_chars_sft": 562.44,
+    "mean_chars_dpo": 588.62
+  },
+  "helpfulness": {
+    "n": 4,
+    "n_failed": 0,
+    "dpo_wins": 0,
+    "sft_wins": 0,
+    "ties": 4,
+    "dpo_win_rate": 0.5,
+    "win_rate_ci95": [
+      0.5,
+      0.5
+    ],
+    "position_consistency": 0.5,
+    "longer_answer_won_frac": null,
+    "length_matched_n": 4,
+    "length_matched_win_rate": 0.5,
+    "mean_chars_sft": 676.0,
+    "mean_chars_dpo": 664.5
+  },
+  "safety": {
+    "n": 4,
+    "n_failed": 0,
+    "dpo_wins": 0,
+    "sft_wins": 0,
+    "ties": 4,
+    "dpo_win_rate": 0.5,
+    "win_rate_ci95": [
+      0.5,
+      0.5
+    ],
+    "position_consistency": 1.0,
+    "longer_answer_won_frac": null,
+    "length_matched_n": 4,
+    "length_matched_win_rate": 0.5,
+    "mean_chars_sft": 419.25,
+    "mean_chars_dpo": 417.25
+  },
+  "cross_judge": {
+    "other_judge": "rm-panel:/tmp/lab22-judge-cache/models--Skywork--Skywork-Reward-V2-Llama-3.2-3B/snapshots/beafe5f2e6a275ce8c556f68f2d82de7fefbc3d8",
+    "n": 58,
+    "agreement": 0.7586206896551724
+  }
+}

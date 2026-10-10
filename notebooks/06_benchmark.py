@@ -26,6 +26,7 @@
 
 # %%
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -36,9 +37,12 @@ sys.path.insert(0, str(ROOT))
 import torch
 
 from lab22 import config as C
+from lab22.bonus import require_weights
 
 assert torch.cuda.is_available()
 assert C.SFT_MERGED.exists() and C.DPO_ADAPTER.exists(), "Run NB1 + NB3 first"
+require_weights(C.SFT_MERGED)
+require_weights(C.DPO_ADAPTER, adapter=True)
 C.ensure_dirs()
 
 BIG = C.COMPUTE_TIER == "BIGGPU"
@@ -49,7 +53,7 @@ BENCHMARKS = {
     "Global-MMLU-vi": ("global_mmlu_full_vi", 0, 40 if BIG else 10, "acc,none"),
 }
 DTYPE = "bfloat16" if torch.cuda.is_bf16_supported() else "float16"
-BATCH = "auto" if BIG else "4"
+BATCH = os.environ.get("BENCH_BATCH", "auto" if BIG else "1")
 for name, (task, shots, limit, _metric) in BENCHMARKS.items():
     print(f"{name:15s} task={task} fewshot={shots} limit/subtask={limit or 'all'}")
 
@@ -100,6 +104,9 @@ for name, (task, shots, limit, metric) in BENCHMARKS.items():
         row[label], row[f"{label}_stderr"] = value, err
     row["delta"] = row["dpo"] - row["sft"]
     rows.append(row)
+    (C.EVAL_DIR / "benchmark_progress.json").write_text(
+        json.dumps({"complete": len(rows) == len(BENCHMARKS), "results": rows}, indent=2)
+    )
     print(row)
 
 # %% [markdown]

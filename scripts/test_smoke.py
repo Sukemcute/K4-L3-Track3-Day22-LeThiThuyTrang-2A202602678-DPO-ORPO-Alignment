@@ -63,6 +63,29 @@ def test_kaggle_bundle_is_current_and_has_only_core_stages():
     assert stages == [f"notebooks/{stem}.py" for stem in NOTEBOOKS[:4] + ["04_compare_and_eval"]]
 
 
+def test_openrouter_rejudge_bundle_is_current_and_does_not_load_policy():
+    from build_kaggle import REJUDGE_TARGET, render_rejudge
+
+    notebook = json.loads(REJUDGE_TARGET.read_text(encoding="utf-8"))
+    assert notebook == render_rejudge()
+    # Embedded helper source defines a lazy RM scorer; writing it does not import torch.
+    all_code = "\n".join(
+        "".join(c["source"]) for c in notebook["cells"]
+        if c["cell_type"] == "code" and not "".join(c["source"]).startswith("%%writefile ")
+    )
+    assert "side_by_side.jsonl" in all_code
+    assert 'os.environ["JUDGE_PROVIDER"] = "openrouter"' in all_code
+    assert "importlib.reload(C)" in all_code
+    assert "MD.load_model" not in all_code and "MD.generate" not in all_code
+    assert "import unsloth" not in all_code and "import torch" not in all_code
+    for cell in notebook["cells"]:
+        if cell["cell_type"] == "code":
+            source = "".join(cell["source"])
+            if source.startswith("%%writefile "):
+                source = source.split("\n", 1)[1]
+            ast.parse(source)
+
+
 def test_kaggle_bundle_uses_kaggle_paths_and_valid_python():
     from build_kaggle import WORKDIR, render
 
@@ -74,6 +97,10 @@ def test_kaggle_bundle_uses_kaggle_paths_and_valid_python():
     first = "".join(code_cells[0]["source"])
     assert 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"' in first
     assert 'os.environ["COMPUTE_TIER"] = "T4"' in first
+    assert 'os.environ["HF_HOME"] = "/tmp/lab22-hf-cache"' in first
+    for variable, folder in (("HF_HUB_CACHE", "hub"), ("HF_DATASETS_CACHE", "datasets"), ("HF_XET_CACHE", "xet")):
+        assert f'os.environ["{variable}"] = "/tmp/lab22-hf-cache/{folder}"' in first
+    assert "/kaggle/working/hf_cache" not in first
     assert "import torch" not in first
     assert "kaggle_secrets" in first
     installer = "".join(code_cells[1]["source"])

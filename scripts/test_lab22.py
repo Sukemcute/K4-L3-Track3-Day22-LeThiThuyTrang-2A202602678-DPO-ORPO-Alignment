@@ -7,6 +7,7 @@ from __future__ import annotations
 import math
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -65,6 +66,106 @@ def test_length_stats():
 
 
 # --- judge ------------------------------------------------------------------
+
+def test_kaggle_openrouter_secret_is_loaded_without_printing_key(monkeypatch, capsys):
+    import os
+    from build_kaggle import OPENROUTER_CONFIG
+
+    for variable in ("JUDGE_PROVIDER", "JUDGE_MODEL", "OPENROUTER_API_KEY"):
+        monkeypatch.setenv(variable, "old-test-value")
+    secret = "test-openrouter-secret"
+    client = SimpleNamespace(get_secret=lambda name: secret if name == "OPENROUTER_API_KEY" else None)
+    monkeypatch.setitem(sys.modules, "kaggle_secrets", SimpleNamespace(UserSecretsClient=lambda: client))
+    namespace = {}
+    exec(OPENROUTER_CONFIG, namespace)
+    assert os.environ["JUDGE_PROVIDER"] == "openrouter"
+    assert os.environ["JUDGE_MODEL"] == "google/gemini-2.5-flash"
+    assert os.environ["OPENROUTER_API_KEY"] == secret
+    assert secret not in capsys.readouterr().out
+    assert "_judge_key" not in namespace
+
+
+@pytest.mark.parametrize("secret", [None, "", "   "])
+def test_kaggle_openrouter_requires_nonempty_secret(monkeypatch, secret):
+    from build_kaggle import OPENROUTER_CONFIG
+
+    for variable in ("JUDGE_PROVIDER", "JUDGE_MODEL", "OPENROUTER_API_KEY"):
+        monkeypatch.setenv(variable, "old-test-value")
+    client = SimpleNamespace(get_secret=lambda name: secret)
+    monkeypatch.setitem(sys.modules, "kaggle_secrets", SimpleNamespace(UserSecretsClient=lambda: client))
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        exec(OPENROUTER_CONFIG, {})
+
+
+def _nb4_judge_cells():
+    from build_colab import percent_cells
+
+    cells = percent_cells(REPO / "notebooks" / "04_compare_and_eval.py")
+    return [
+        "".join(cell["source"])
+        for cell in cells
+        if cell["cell_type"] == "code" and "".join(cell["source"]).startswith(
+            ("provider = C.JUDGE_PROVIDER", "def splits(rows:")
+        )
+    ]
+
+
+def test_selected_api_without_key_stops_before_loading_rm(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    config = SimpleNamespace(JUDGE_PROVIDER="openrouter", JUDGE_MODEL="google/gemini-2.5-flash")
+    with pytest.raises(RuntimeError, match="missing API key"):
+        exec(_nb4_judge_cells()[0], {"C": config, "J": J})
+
+
+def test_nb4_openrouter_two_orders_saves_summary_and_cross_judge(monkeypatch, tmp_path):
+    import hashlib
+    import json
+
+    records = [
+        {"id": f"e{i}", "category": "heldout", "prompt": f"q{i}", "sft": "sft", "dpo": "dpo"}
+        for i in range(50)
+    ] + [
+        {"id": f"{category}{i}", "category": category, "prompt": "q", "sft": "sft", "dpo": "dpo"}
+        for category in ("helpfulness", "safety") for i in range(4)
+    ]
+    output_bytes = ("\n".join(json.dumps(row) for row in records) + "\n").encode()
+    (tmp_path / "side_by_side.jsonl").write_bytes(output_bytes)
+    digest = hashlib.sha256(output_bytes).hexdigest()
+    saved_rm = {"judge": "previous-rm", "outputs_sha256": digest,
+                "records": [{**row, "winner": "sft"} for row in records]}
+    rm_path = tmp_path / "judge_results_rm.json"
+    rm_path.write_text(json.dumps(saved_rm), encoding="utf-8")
+    calls = []
+
+    def make_caller(provider, model):
+        assert provider == "openrouter" and model == "google/gemini-2.5-flash"
+
+        def call(system, user):
+            calls.append(user)
+            return '{"winner":"B"}' if len(calls) % 2 else '{"winner":"A"}'
+
+        return call
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "fake-test-key")
+    monkeypatch.setattr(J, "make_caller", make_caller)
+    monkeypatch.setattr(J, "make_rm_scorer", lambda *args: pytest.fail("Should not load an RM"))
+    config = SimpleNamespace(JUDGE_PROVIDER="openrouter", JUDGE_MODEL="google/gemini-2.5-flash",
+                             EVAL_DIR=tmp_path, SEED=42)
+    namespace = {"C": config, "J": J, "records": records, "OUTPUTS_SHA": digest, "json": json}
+    for source in _nb4_judge_cells():
+        exec(source, namespace)
+    summary = json.loads((tmp_path / "judge_summary.json").read_text(encoding="utf-8"))
+    assert len(calls) == 116
+    assert calls[0].index("sft") < calls[0].index("dpo")
+    assert calls[1].index("dpo") < calls[1].index("sft")
+    assert summary["judge"] == "openrouter:google/gemini-2.5-flash"
+    assert summary["outputs_sha256"] == digest
+    assert summary["heldout"]["n"] == 50 and summary["heldout"]["dpo_win_rate"] == 1.0
+    assert summary["heldout"]["position_consistency"] == 1.0
+    assert summary["cross_judge"]["agreement"] == 0.0
+    assert json.loads(rm_path.read_text(encoding="utf-8")) == saved_rm
+    assert (tmp_path / "judge_results_api.json").is_file()
+    assert (tmp_path / "side_by_side.jsonl").read_bytes() == output_bytes
 
 @pytest.mark.parametrize(
     "raw,expected",

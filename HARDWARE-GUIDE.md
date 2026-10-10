@@ -45,7 +45,8 @@ Nếu chạy trên máy riêng, nên để trống **40 GB**. Colab cấp khoả
 
 Cần truy cập Hugging Face để tải mô hình và dữ liệu. Giám khảo mặc định của NB4 là hội đồng hai reward model chạy
 local (tải từ Hugging Face, ~8 GB + ~6,5 GB, nạp lần lượt từng cái). Giám khảo API (tuỳ chọn) cần kết nối HTTPS
-tới nhà cung cấp đã chọn; nếu không có khoá API, NB4 tự quay về hội đồng reward model.
+tới nhà cung cấp đã chọn. Nếu đã chọn giám khảo API nhưng thiếu khoá, NB4 dừng để cấu hình.
+Bản Kaggle dùng OpenRouter qua Kaggle Secrets; notebook chấm lại chỉ cần Internet và câu trả lời đã lưu, không cần GPU.
 
 ## 5. Máy Apple Silicon
 
